@@ -1,9 +1,10 @@
 package me.haram.demoinflearnrestapi.events;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -51,8 +53,8 @@ public class EventControllerTests {
                 .andExpect(jsonPath("id").exists())
                 .andExpect(header().exists(HttpHeaders.LOCATION))
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaTypes.HAL_JSON_VALUE + ";charset=UTF-8"))
-                .andExpect(jsonPath("id").value(Matchers.not(100)))
-                .andExpect(jsonPath("free").value(Matchers.not(true)))
+                .andExpect(jsonPath("free").value(false))
+                .andExpect(jsonPath("offline").value(true))
                 .andExpect(jsonPath("eventStatus").value(EventStatus.DRAFT.name()))
         ;
     }
@@ -124,5 +126,53 @@ public class EventControllerTests {
                 .andExpect(jsonPath("$[0].code").exists())
                 .andExpect(jsonPath("$[0].defaultMessage").exists())
         ;
+    }
+
+    @ParameterizedTest
+    @MethodSource("testFreeParams")
+    @DisplayName("무료 테스트")
+    public void testFree(int basePrice, int maxPrice, boolean isFree) {
+        // Given
+        Event event = Event.builder()
+                .basePrice(basePrice)
+                .maxPrice(maxPrice)
+                .build();
+
+        // When
+        event.update();
+
+        // Then
+        assertThat(event.isFree()).isEqualTo(isFree);
+    }
+
+    @ParameterizedTest
+    @MethodSource("testOfflineParams")
+    @DisplayName("오프라인 테스트")
+    public void testOffline(String location, boolean isOffline) {
+        // Given
+        Event event = Event.builder()
+                .location(location)
+                .build();
+
+        // When
+        event.update();
+
+        // Then
+        assertThat(event.isOffline()).isEqualTo(isOffline);
+    }
+
+    private static Object[] testFreeParams() {
+        return new Object[]{
+                new Object[]{0, 0, true},
+                new Object[]{100, 0, false},
+                new Object[]{0, 100, false}
+        };
+    }
+    private static Object[] testOfflineParams() {
+        return new Object[]{
+                new Object[]{"강남역 네이버 D2 스타텁 팩토리", true},
+                new Object[]{null, false},
+                new Object[]{" ", false}
+        };
     }
 }
