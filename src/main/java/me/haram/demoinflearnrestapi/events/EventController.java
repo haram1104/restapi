@@ -1,7 +1,9 @@
 package me.haram.demoinflearnrestapi.events;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.MediaTypes;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
@@ -41,7 +43,13 @@ public class EventController {
         Event event = modelMapper.map(eventDto, Event.class);
         event.update();
         Event newEvent = this.eventRepository.save(event);
-        URI createdUri = linkTo(EventController.class).slash(newEvent.getId()).toUri();
-        return ResponseEntity.created(createdUri).body(event);
+
+        WebMvcLinkBuilder webMvcLinkBuilder = linkTo(EventController.class).slash(newEvent.getId());
+        URI createdUri = webMvcLinkBuilder.toUri();
+        EntityModel<Event> eventEntityModel = EntityModel.of(event);
+        eventEntityModel.add(linkTo(EventController.class).withRel("query-events"));
+        eventEntityModel.add(webMvcLinkBuilder.withSelfRel());
+        eventEntityModel.add(webMvcLinkBuilder.withRel("update-event"));
+        return ResponseEntity.created(createdUri).body(eventEntityModel);
     }
 }
