@@ -46,7 +46,7 @@ public class EventController {
 
         WebMvcLinkBuilder webMvcLinkBuilder = linkTo(EventController.class).slash(newEvent.getId());
         URI createdUri = webMvcLinkBuilder.toUri();
-        EntityModel<Event> eventEntityModel = EntityModel.of(event);
+        EntityModel<Event> eventEntityModel = EntityModel.of(newEvent);
         eventEntityModel.add(linkTo(EventController.class).withRel("query-events"));
         eventEntityModel.add(webMvcLinkBuilder.withSelfRel());
         eventEntityModel.add(webMvcLinkBuilder.withRel("update-event"));
