@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.restdocs.headers.HeaderDocumentation.*;
@@ -39,6 +40,8 @@ public class EventControllerTests {
     MockMvc mockMvc;
     @Autowired
     ObjectMapper objectMapper;
+    @Autowired
+    EventRepository eventRepository;
 
     @Test
     @DisplayName("정상적으로 이벤트를 생성하는 테스트")
@@ -187,6 +190,51 @@ public class EventControllerTests {
                 .andExpect(jsonPath("errors[0].defaultMessage").exists())
                 .andExpect(jsonPath("_links.index").exists())
         ;
+    }
+
+    @Test
+    @DisplayName("30개의 이벤트를 10개씩 두번째 페이지 조회하기")
+    public void queryEvents() throws Exception {
+        // Given
+        IntStream.range(0, 30).forEach(this::generateEvent);
+
+        // When
+        this.mockMvc.perform(get("/api/events")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .param("sort", "name,DESC"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("page").exists())
+                .andExpect(jsonPath("_embedded.eventList[0]._links.self").exists())
+                .andExpect(jsonPath("_links.self").exists())
+                .andExpect(jsonPath("_links.profile").exists())
+                .andDo(document("query-events",
+                        links(
+                                linkWithRel("self").description("link to self"),
+                                linkWithRel("first").description("link to first page of events"),
+                                linkWithRel("prev").description("link to prev page of events"),
+                                linkWithRel("next").description("link to next page of events"),
+                                linkWithRel("last").description("link to last page of events"),
+                                linkWithRel("profile").description("link to profile")
+                        ),
+                        relaxedResponseFields(
+                                fieldWithPath("page.size").description("size of page"),
+                                fieldWithPath("page.totalElements").description("total elements of page"),
+                                fieldWithPath("page.totalPages").description("total pages of page"),
+                                fieldWithPath("page.number").description("number of page")
+                        )
+                ))
+        ;
+    }
+
+    private void generateEvent(int index) {
+        Event event = Event.builder()
+                .name("event " + index)
+                .description("test event")
+                .build();
+
+        this.eventRepository.save(event);
     }
 
     @ParameterizedTest
